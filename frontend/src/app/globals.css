@@ -1,0 +1,84 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  
+  body {
+    @apply bg-background text-text-primary;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-surface;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-surface-lighter rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-border-light;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-primary {
+    @apply bg-primary-500 text-white hover:bg-primary-600 shadow-glow hover:shadow-glow-lg;
+  }
+
+  .btn-secondary {
+    @apply bg-surface-light text-text-primary hover:bg-surface-lighter border border-border;
+  }
+
+  .btn-ghost {
+    @apply text-text-secondary hover:text-text-primary hover:bg-surface-light;
+  }
+
+  .card {
+    @apply bg-surface border border-border rounded-xl p-4;
+  }
+
+  .input {
+    @apply w-full bg-surface-light border border-border rounded-lg px-4 py-2 text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 transition-all;
+  }
+
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .badge-pending {
+    @apply bg-warning/20 text-warning;
+  }
+
+  .badge-parsed {
+    @apply bg-info/20 text-info;
+  }
+
+  .badge-reviewed {
+    @apply bg-success/20 text-success;
+  }
+
+  .badge-failed {
+    @apply bg-error/20 text-error;
+  }
+}
+
+/* Monaco editor customization */
+.monaco-editor {
+  border-radius: 0.5rem;
+}
+
+
