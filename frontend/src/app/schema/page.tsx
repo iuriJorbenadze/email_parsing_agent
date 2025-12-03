@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
-import { Save, RotateCcw, Plus, Trash2, HelpCircle } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Save, RotateCcw, HelpCircle, Loader2, CheckCircle } from 'lucide-react'
 import { JsonEditor } from '@/components/email/JsonEditor'
+import { useParsingSchema, useUpdateSchema } from '@/lib/hooks'
 
 const defaultSchema = {
   type: "object",
@@ -52,26 +53,51 @@ const defaultSchema = {
 }
 
 export default function SchemaEditorPage() {
+  const { data, isLoading, refetch } = useParsingSchema()
+  const updateSchema = useUpdateSchema()
   const [schema, setSchema] = useState(defaultSchema)
   const [hasChanges, setHasChanges] = useState(false)
-  const [isSaving, setIsSaving] = useState(false)
+  const [saveSuccess, setSaveSuccess] = useState(false)
+
+  // Load schema from API when data arrives
+  useEffect(() => {
+    if (data?.schema) {
+      setSchema(data.schema)
+    }
+  }, [data])
 
   const handleSchemaChange = (newSchema: any) => {
     setSchema(newSchema)
     setHasChanges(true)
+    setSaveSuccess(false)
   }
 
   const handleSave = async () => {
-    setIsSaving(true)
-    // TODO: Save to API
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    setIsSaving(false)
-    setHasChanges(false)
+    try {
+      await updateSchema.mutateAsync(schema)
+      setHasChanges(false)
+      setSaveSuccess(true)
+      setTimeout(() => setSaveSuccess(false), 3000)
+      // Refetch to confirm save
+      refetch()
+    } catch (error) {
+      console.error('Failed to save schema:', error)
+      alert('Failed to save schema')
+    }
   }
 
   const handleReset = () => {
     setSchema(defaultSchema)
-    setHasChanges(false)
+    setHasChanges(true)
+    setSaveSuccess(false)
+  }
+
+  if (isLoading) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary-500" />
+      </div>
+    )
   }
 
   return (
@@ -86,21 +112,30 @@ export default function SchemaEditorPage() {
             </p>
           </div>
           <div className="flex items-center gap-3">
+            {saveSuccess && (
+              <span className="text-success flex items-center gap-1 text-sm">
+                <CheckCircle className="w-4 h-4" />
+                Saved!
+              </span>
+            )}
             <button 
               onClick={handleReset}
               className="btn btn-secondary"
-              disabled={!hasChanges}
             >
               <RotateCcw className="w-4 h-4" />
-              Reset
+              Reset to Default
             </button>
             <button 
               onClick={handleSave}
               className="btn btn-primary"
-              disabled={!hasChanges || isSaving}
+              disabled={!hasChanges || updateSchema.isPending}
             >
-              <Save className="w-4 h-4" />
-              {isSaving ? 'Saving...' : 'Save Schema'}
+              {updateSchema.isPending ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4" />
+              )}
+              {updateSchema.isPending ? 'Saving...' : 'Save Schema'}
             </button>
           </div>
         </div>
@@ -173,5 +208,3 @@ export default function SchemaEditorPage() {
     </div>
   )
 }
-
-

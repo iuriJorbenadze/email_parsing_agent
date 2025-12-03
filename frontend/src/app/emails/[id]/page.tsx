@@ -1,90 +1,98 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { 
   ArrowLeft, 
   Check, 
   RefreshCw, 
-  Copy,
-  ExternalLink,
-  AlertTriangle
+  AlertTriangle,
+  Loader2,
+  CheckCircle
 } from 'lucide-react'
-import { cn } from '@/lib/utils'
 import { JsonEditor } from '@/components/email/JsonEditor'
-
-// Mock data - will be replaced with API call
-const mockEmail = {
-  id: 1,
-  subject: 'Partnership Opportunity - Tech Blog Network',
-  sender: 'john@techblog.com',
-  senderName: 'John Smith',
-  receivedAt: new Date(Date.now() - 1000 * 60 * 30),
-  status: 'parsed',
-  bodyText: `Hi there,
-
-I'm reaching out from TechBlog Network, a collection of 15 technology-focused websites with a combined monthly readership of 2.5 million visitors.
-
-We're interested in exploring a partnership opportunity with your website. Here's what we're proposing:
-
-- Guest post exchange (2 posts per month each way)
-- Link placement in relevant existing articles
-- Sponsored content opportunities ($200 per article)
-
-Our flagship site, techblog.com, has:
-- Domain Authority: 58
-- Monthly organic traffic: 850,000 visitors
-- Primary audience: Tech professionals, developers
-
-Let me know if you'd be interested in discussing this further.
-
-Best regards,
-John Smith
-Partnerships Manager
-TechBlog Network
-john@techblog.com
-+1 (555) 123-4567`,
-  parsedData: {
-    company_name: 'TechBlog Network',
-    contact_email: 'john@techblog.com',
-    contact_name: 'John Smith',
-    website_url: 'techblog.com',
-    offer_type: 'partnership',
-    price: {
-      amount: 200,
-      currency: 'USD'
-    },
-    description: 'Guest post exchange and sponsored content partnership proposal',
-    metrics: {
-      monthly_traffic: '850,000',
-      domain_authority: 58
-    }
-  },
-}
+import { useEmail, useUpdateEmail } from '@/lib/hooks'
 
 export default function EmailDetailPage() {
   const params = useParams()
   const router = useRouter()
-  const [parsedData, setParsedData] = useState(mockEmail.parsedData)
+  const emailId = params.id as string
+  
+  const { data: email, isLoading, error, refetch } = useEmail(emailId)
+  const updateEmail = useUpdateEmail()
+  
+  const [editedData, setEditedData] = useState<any>(null)
   const [hasChanges, setHasChanges] = useState(false)
-  const [isSaving, setIsSaving] = useState(false)
+  const [saveSuccess, setSaveSuccess] = useState(false)
+
+  // Initialize edited data when email loads
+  useEffect(() => {
+    if (email) {
+      // Use corrected_data if exists, otherwise parsed_data
+      setEditedData(email.corrected_data || email.parsed_data || {})
+      setHasChanges(false)
+      setSaveSuccess(false)
+    }
+  }, [email])
 
   const handleJsonChange = (newData: any) => {
-    setParsedData(newData)
+    setEditedData(newData)
     setHasChanges(true)
+    setSaveSuccess(false)
   }
 
   const handleSave = async () => {
-    setIsSaving(true)
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    setIsSaving(false)
-    setHasChanges(false)
+    if (!email) return
+    
+    try {
+      await updateEmail.mutateAsync({
+        id: email.id,
+        corrected_data: editedData,
+        status: 'reviewed',
+      })
+      setHasChanges(false)
+      setSaveSuccess(true)
+      setTimeout(() => setSaveSuccess(false), 3000)
+      // Refetch to get updated data
+      refetch()
+    } catch (error) {
+      console.error('Failed to save:', error)
+      alert('Failed to save changes')
+    }
   }
 
-  const handleReparse = async () => {
-    // TODO: Implement re-parsing
-    console.log('Re-parsing email...')
+  const handleMarkReviewed = async () => {
+    if (!email) return
+    
+    try {
+      await updateEmail.mutateAsync({
+        id: email.id,
+        status: 'reviewed',
+      })
+      refetch()
+    } catch (error) {
+      console.error('Failed to mark reviewed:', error)
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary-500" />
+      </div>
+    )
+  }
+
+  if (error || !email) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center gap-4">
+        <AlertTriangle className="w-12 h-12 text-error" />
+        <p className="text-text-secondary">Email not found</p>
+        <button onClick={() => router.back()} className="btn btn-secondary">
+          Go Back
+        </button>
+      </div>
+    )
   }
 
   return (
@@ -101,32 +109,50 @@ export default function EmailDetailPage() {
             </button>
             <div>
               <h1 className="text-xl font-semibold truncate max-w-xl">
-                {mockEmail.subject}
+                {email.subject || 'No Subject'}
               </h1>
               <p className="text-sm text-text-secondary">
-                From {mockEmail.senderName} &lt;{mockEmail.sender}&gt;
+                From {email.sender_name || 'Unknown'} &lt;{email.sender}&gt;
+                {email.status && (
+                  <span className={`ml-2 px-2 py-0.5 rounded text-xs ${
+                    email.status === 'reviewed' ? 'bg-success/20 text-success' :
+                    email.status === 'parsed' ? 'bg-info/20 text-info' :
+                    'bg-warning/20 text-warning'
+                  }`}>
+                    {email.status}
+                  </span>
+                )}
               </p>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <button 
-              onClick={handleReparse}
-              className="btn btn-secondary"
-            >
-              <RefreshCw className="w-4 h-4" />
-              Re-parse
-            </button>
+            {saveSuccess && (
+              <span className="text-success flex items-center gap-1 text-sm">
+                <CheckCircle className="w-4 h-4" />
+                Saved!
+              </span>
+            )}
+            {email.status !== 'reviewed' && !hasChanges && (
+              <button 
+                onClick={handleMarkReviewed}
+                disabled={updateEmail.isPending}
+                className="btn btn-secondary"
+              >
+                <Check className="w-4 h-4" />
+                Mark Reviewed
+              </button>
+            )}
             <button 
               onClick={handleSave}
-              disabled={!hasChanges || isSaving}
+              disabled={!hasChanges || updateEmail.isPending}
               className="btn btn-primary"
             >
-              {isSaving ? (
+              {updateEmail.isPending ? (
                 <RefreshCw className="w-4 h-4 animate-spin" />
               ) : (
                 <Check className="w-4 h-4" />
               )}
-              {hasChanges ? 'Save Changes' : 'Mark Reviewed'}
+              {hasChanges ? 'Save Changes' : 'Saved'}
             </button>
           </div>
         </div>
@@ -144,7 +170,7 @@ export default function EmailDetailPage() {
           <div className="flex-1 overflow-auto p-6">
             <div className="prose prose-invert max-w-none">
               <pre className="whitespace-pre-wrap font-sans text-text-primary text-sm leading-relaxed bg-transparent p-0 m-0">
-                {mockEmail.bodyText}
+                {email.body_text || 'No content'}
               </pre>
             </div>
           </div>
@@ -164,15 +190,19 @@ export default function EmailDetailPage() {
             )}
           </div>
           <div className="flex-1 overflow-auto">
-            <JsonEditor 
-              value={parsedData} 
-              onChange={handleJsonChange}
-            />
+            {editedData !== null ? (
+              <JsonEditor 
+                value={editedData} 
+                onChange={handleJsonChange}
+              />
+            ) : (
+              <div className="flex items-center justify-center h-full text-text-muted">
+                <p>No parsed data available. Parse this email first.</p>
+              </div>
+            )}
           </div>
         </div>
       </div>
     </div>
   )
 }
-
-

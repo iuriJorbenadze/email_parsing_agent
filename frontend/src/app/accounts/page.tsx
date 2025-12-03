@@ -10,40 +10,15 @@ import {
   AlertCircle,
   Clock
 } from 'lucide-react'
-import { formatDistanceToNow } from 'date-fns'
 import { cn } from '@/lib/utils'
-
-// Mock data - will be replaced with API
-const mockAccounts = [
-  {
-    id: 1,
-    email: 'inbox@mycompany.com',
-    displayName: 'Main Inbox',
-    isActive: true,
-    lastSync: new Date(Date.now() - 1000 * 60 * 5),
-    emailCount: 847,
-  },
-  {
-    id: 2,
-    email: 'offers@mycompany.com',
-    displayName: 'Offers Inbox',
-    isActive: true,
-    lastSync: new Date(Date.now() - 1000 * 60 * 15),
-    emailCount: 234,
-  },
-  {
-    id: 3,
-    email: 'partnerships@domain.io',
-    displayName: 'Partnership Requests',
-    isActive: false,
-    lastSync: new Date(Date.now() - 1000 * 60 * 60 * 24),
-    emailCount: 156,
-  },
-]
+import { useGmailAccounts } from '@/lib/hooks'
+import { api } from '@/lib/api'
+import { useQueryClient } from '@tanstack/react-query'
 
 export default function AccountsPage() {
-  const [accounts, setAccounts] = useState(mockAccounts)
+  const { data: accounts = [], isLoading, refetch } = useGmailAccounts()
   const [isConnecting, setIsConnecting] = useState(false)
+  const queryClient = useQueryClient()
 
   const handleConnect = () => {
     setIsConnecting(true)
@@ -56,9 +31,13 @@ export default function AccountsPage() {
     console.log('Syncing account:', accountId)
   }
 
-  const handleDisconnect = (accountId: number) => {
-    // TODO: Implement disconnect
-    setAccounts(accounts.filter(a => a.id !== accountId))
+  const handleDisconnect = async (accountId: number) => {
+    if (!confirm('Are you sure you want to disconnect this account? All associated emails will be deleted.')) {
+      return
+    }
+    await api.delete(`/gmail-accounts/${accountId}`)
+    queryClient.invalidateQueries({ queryKey: ['gmail-accounts'] })
+    queryClient.invalidateQueries({ queryKey: ['emails'] })
   }
 
   return (
@@ -87,7 +66,11 @@ export default function AccountsPage() {
 
       {/* Account List */}
       <div className="grid gap-4">
-        {accounts.length === 0 ? (
+        {isLoading ? (
+          <div className="card animate-pulse">
+            <div className="h-20 bg-surface-light rounded"></div>
+          </div>
+        ) : accounts.length === 0 ? (
           <div className="card text-center py-12">
             <Mail className="w-12 h-12 text-text-muted mx-auto mb-4" />
             <h3 className="text-lg font-medium text-text-primary mb-2">
@@ -105,7 +88,7 @@ export default function AccountsPage() {
             </button>
           </div>
         ) : (
-          accounts.map((account, index) => (
+          accounts.map((account: any, index: number) => (
             <div 
               key={account.id}
               className="card flex items-center justify-between animate-fade-in"
@@ -115,7 +98,7 @@ export default function AccountsPage() {
                 {/* Gmail icon */}
                 <div className={cn(
                   'w-12 h-12 rounded-xl flex items-center justify-center',
-                  account.isActive 
+                  account.is_active 
                     ? 'bg-gradient-to-br from-red-500 to-orange-500' 
                     : 'bg-surface-lighter'
                 )}>
@@ -126,9 +109,9 @@ export default function AccountsPage() {
                 <div>
                   <div className="flex items-center gap-2">
                     <h3 className="font-semibold text-text-primary">
-                      {account.displayName}
+                      {account.display_name || account.email}
                     </h3>
-                    {account.isActive ? (
+                    {account.is_active ? (
                       <span className="badge bg-success/20 text-success">
                         <CheckCircle className="w-3 h-3 mr-1" />
                         Active
@@ -146,12 +129,14 @@ export default function AccountsPage() {
                   <div className="flex items-center gap-4 mt-1 text-xs text-text-muted">
                     <span className="flex items-center gap-1">
                       <Mail className="w-3 h-3" />
-                      {account.emailCount} emails
+                      {account.email_count || 0} emails
                     </span>
-                    <span className="flex items-center gap-1">
-                      <Clock className="w-3 h-3" />
-                      Synced {formatDistanceToNow(account.lastSync, { addSuffix: true })}
-                    </span>
+                    {account.last_sync && (
+                      <span className="flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        Last sync: {new Date(account.last_sync).toLocaleString()}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -161,7 +146,7 @@ export default function AccountsPage() {
                 <button 
                   onClick={() => handleSync(account.id)}
                   className="btn btn-secondary"
-                  disabled={!account.isActive}
+                  disabled={!account.is_active}
                 >
                   <RefreshCw className="w-4 h-4" />
                   Sync
@@ -200,5 +185,3 @@ export default function AccountsPage() {
     </div>
   )
 }
-
-
