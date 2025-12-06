@@ -4,12 +4,12 @@ import { QuickActions } from '@/components/dashboard/QuickActions'
 
 export default function Dashboard() {
   return (
-    <div className="p-8 space-y-8">
+    <div className="p-6 space-y-6 max-w-6xl mx-auto">
       {/* Header */}
-      <div className="space-y-2">
-        <h1 className="text-3xl font-bold text-text-primary">Dashboard</h1>
-        <p className="text-text-secondary">
-          Monitor your email parsing pipeline and review processed emails
+      <div>
+        <h1 className="text-2xl font-semibold text-text-primary">Dashboard</h1>
+        <p className="text-text-secondary text-sm mt-1">
+          Monitor your email parsing pipeline
         </p>
       </div>
 
@@ -31,5 +31,3 @@ export default function Dashboard() {
     </div>
   )
 }
-
-

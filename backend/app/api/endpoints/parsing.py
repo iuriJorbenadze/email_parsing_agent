@@ -155,12 +155,16 @@ async def parse_email(email_id: int, db: Session = Depends(get_db)):
         )
         
         if result["success"]:
-            # Save parsed data
+            # Save parsed data and clear any previous corrections
             email.parsed_data = result["data"]
             email.parsing_model = result.get("model", "gpt-4-turbo-preview")
             email.parsed_at = datetime.utcnow()
             email.status = EmailStatus.PARSED
             email.error_message = None
+            # Clear corrections when re-parsing - user wants fresh AI output
+            email.corrected_data = None
+            email.correction_diff = None
+            email.corrected_at = None
             
             db.commit()
             

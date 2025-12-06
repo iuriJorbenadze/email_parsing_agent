@@ -9,65 +9,64 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Dark theme inspired by Dracula/One Dark
-        background: '#0d1117',
-        surface: '#161b22',
-        'surface-light': '#21262d',
-        'surface-lighter': '#30363d',
-        border: '#30363d',
-        'border-light': '#484f58',
+        // ChatGPT-inspired dark theme - pure darks
+        background: '#0d0d0d',
+        surface: '#171717',
+        'surface-light': '#1e1e1e',
+        'surface-lighter': '#2a2a2a',
+        border: '#2f2f2f',
+        'border-light': '#404040',
         
-        // Primary accent - Electric cyan
+        // Primary accent - Clean teal/cyan
         primary: {
           50: '#ecfeff',
           100: '#cffafe',
           200: '#a5f3fc',
           300: '#67e8f9',
-          400: '#22d3ee',
-          500: '#06b6d4',
-          600: '#0891b2',
-          700: '#0e7490',
-          800: '#155e75',
-          900: '#164e63',
+          400: '#10b981',
+          500: '#10a37f',  // ChatGPT green
+          600: '#0d8a6f',
+          700: '#0b7a5f',
+          800: '#0a6b52',
+          900: '#085c45',
         },
         
-        // Secondary accent - Soft purple
+        // Secondary accent - Subtle gray-blue
         accent: {
-          50: '#faf5ff',
-          100: '#f3e8ff',
-          200: '#e9d5ff',
-          300: '#d8b4fe',
-          400: '#c084fc',
-          500: '#a855f7',
-          600: '#9333ea',
-          700: '#7e22ce',
-          800: '#6b21a8',
-          900: '#581c87',
+          50: '#f8fafc',
+          100: '#f1f5f9',
+          200: '#e2e8f0',
+          300: '#cbd5e1',
+          400: '#94a3b8',
+          500: '#64748b',
+          600: '#475569',
+          700: '#334155',
+          800: '#1e293b',
+          900: '#0f172a',
         },
         
-        // Status colors
-        success: '#3fb950',
-        warning: '#d29922',
-        error: '#f85149',
-        info: '#58a6ff',
+        // Status colors - Muted versions
+        success: '#10b981',
+        warning: '#f59e0b',
+        error: '#ef4444',
+        info: '#3b82f6',
         
-        // Text
-        'text-primary': '#e6edf3',
-        'text-secondary': '#8b949e',
-        'text-muted': '#6e7681',
+        // Text - High contrast on dark
+        'text-primary': '#ececec',
+        'text-secondary': '#a1a1a1',
+        'text-muted': '#6b6b6b',
       },
       fontFamily: {
-        sans: ['DM Sans', 'system-ui', 'sans-serif'],
-        mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
+        sans: ['Söhne', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        mono: ['Söhne Mono', 'Monaco', 'Menlo', 'monospace'],
       },
       boxShadow: {
-        'glow': '0 0 20px rgba(6, 182, 212, 0.15)',
-        'glow-lg': '0 0 40px rgba(6, 182, 212, 0.2)',
+        'glow': '0 0 15px rgba(16, 163, 127, 0.1)',
+        'glow-lg': '0 0 30px rgba(16, 163, 127, 0.15)',
       },
       animation: {
-        'fade-in': 'fadeIn 0.3s ease-out',
-        'slide-up': 'slideUp 0.3s ease-out',
-        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        'fade-in': 'fadeIn 0.2s ease-out',
+        'slide-up': 'slideUp 0.2s ease-out',
       },
       keyframes: {
         fadeIn: {
@@ -75,7 +74,7 @@ const config: Config = {
           '100%': { opacity: '1' },
         },
         slideUp: {
-          '0%': { opacity: '0', transform: 'translateY(10px)' },
+          '0%': { opacity: '0', transform: 'translateY(8px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' },
         },
       },
@@ -84,5 +83,3 @@ const config: Config = {
   plugins: [],
 }
 export default config
-
-

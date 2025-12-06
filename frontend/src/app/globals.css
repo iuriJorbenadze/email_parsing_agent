@@ -11,18 +11,18 @@
     @apply bg-background text-text-primary;
   }
 
-  /* Custom scrollbar */
+  /* Custom scrollbar - minimal */
   ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 6px;
+    height: 6px;
   }
 
   ::-webkit-scrollbar-track {
-    @apply bg-surface;
+    @apply bg-transparent;
   }
 
   ::-webkit-scrollbar-thumb {
-    @apply bg-surface-lighter rounded-full;
+    @apply bg-border rounded-full;
   }
 
   ::-webkit-scrollbar-thumb:hover {
@@ -32,15 +32,15 @@
 
 @layer components {
   .btn {
-    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md font-medium text-sm transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed;
   }
 
   .btn-primary {
-    @apply bg-primary-500 text-white hover:bg-primary-600 shadow-glow hover:shadow-glow-lg;
+    @apply bg-primary-500 text-white hover:bg-primary-600 active:bg-primary-700;
   }
 
   .btn-secondary {
-    @apply bg-surface-light text-text-primary hover:bg-surface-lighter border border-border;
+    @apply bg-surface-lighter text-text-primary hover:bg-border border border-border;
   }
 
   .btn-ghost {
@@ -48,37 +48,44 @@
   }
 
   .card {
-    @apply bg-surface border border-border rounded-xl p-4;
+    @apply bg-surface border border-border rounded-lg p-4;
   }
 
   .input {
-    @apply w-full bg-surface-light border border-border rounded-lg px-4 py-2 text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 transition-all;
+    @apply w-full bg-surface-light border border-border rounded-md px-3 py-2 text-text-primary text-sm placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 transition-all;
   }
 
   .badge {
-    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+    @apply inline-flex items-center px-2 py-0.5 rounded text-xs font-medium;
   }
 
   .badge-pending {
-    @apply bg-warning/20 text-warning;
+    @apply bg-warning/15 text-warning;
   }
 
   .badge-parsed {
-    @apply bg-info/20 text-info;
+    @apply bg-info/15 text-info;
   }
 
   .badge-reviewed {
-    @apply bg-success/20 text-success;
+    @apply bg-success/15 text-success;
   }
 
   .badge-failed {
-    @apply bg-error/20 text-error;
+    @apply bg-error/15 text-error;
+  }
+
+  .badge-parsing {
+    @apply bg-primary-500/15 text-primary-400;
   }
 }
 
 /* Monaco editor customization */
 .monaco-editor {
-  border-radius: 0.5rem;
+  border-radius: 0.375rem;
 }
 
-
+/* Selection */
+::selection {
+  @apply bg-primary-500/30;
+}

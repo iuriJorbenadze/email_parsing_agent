@@ -1,7 +1,6 @@
 'use client'
 
 import { Mail, CheckCircle, Clock, AlertTriangle } from 'lucide-react'
-import { cn } from '@/lib/utils'
 import { useEmails } from '@/lib/hooks'
 
 export function DashboardStats() {
@@ -27,53 +26,51 @@ export function DashboardStats() {
 
   const statItems = [
     {
-      name: 'Total Emails',
+      name: 'Total',
       value: stats.total,
       icon: Mail,
-      gradient: 'from-primary-500 to-primary-600',
+      color: 'text-text-secondary',
+      bg: 'bg-surface-lighter',
     },
     {
       name: 'Reviewed',
       value: stats.reviewed,
       icon: CheckCircle,
-      gradient: 'from-success to-emerald-600',
+      color: 'text-success',
+      bg: 'bg-success/10',
     },
     {
-      name: 'Pending Review',
+      name: 'Pending',
       value: stats.pending + stats.parsed,
       icon: Clock,
-      gradient: 'from-warning to-amber-600',
+      color: 'text-warning',
+      bg: 'bg-warning/10',
     },
     {
-      name: 'Parse Errors',
+      name: 'Failed',
       value: stats.failed,
       icon: AlertTriangle,
-      gradient: 'from-error to-rose-600',
+      color: 'text-error',
+      bg: 'bg-error/10',
     },
   ]
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-      {statItems.map((stat, index) => (
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {statItems.map((stat) => (
         <div
           key={stat.name}
-          className="card group hover:border-primary-500/30 transition-all duration-300 animate-fade-in"
-          style={{ animationDelay: `${index * 100}ms` }}
+          className="bg-surface border border-border rounded-lg p-4"
         >
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-sm text-text-secondary">{stat.name}</p>
-              <p className="mt-2 text-3xl font-bold font-mono">
-                {isLoading ? '...' : stat.value}
-              </p>
-            </div>
-            <div className={cn(
-              'w-10 h-10 rounded-lg bg-gradient-to-br flex items-center justify-center',
-              stat.gradient
-            )}>
-              <stat.icon className="w-5 h-5 text-white" />
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-text-secondary text-sm">{stat.name}</span>
+            <div className={`w-8 h-8 rounded-md ${stat.bg} flex items-center justify-center`}>
+              <stat.icon className={`w-4 h-4 ${stat.color}`} />
             </div>
           </div>
+          <p className="text-2xl font-semibold text-text-primary font-mono">
+            {isLoading ? '—' : stat.value}
+          </p>
         </div>
       ))}
     </div>

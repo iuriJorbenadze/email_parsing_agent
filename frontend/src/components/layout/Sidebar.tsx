@@ -10,7 +10,8 @@ import {
   Link as LinkIcon,
   Inbox,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  Sparkles
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -26,19 +27,19 @@ export function Sidebar() {
   const pathname = usePathname()
 
   return (
-    <aside className="w-64 bg-surface border-r border-border flex flex-col">
+    <aside className="w-60 bg-surface flex flex-col border-r border-border">
       {/* Logo */}
-      <div className="h-16 flex items-center px-6 border-b border-border">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-400 to-accent-500 flex items-center justify-center">
-            <Mail className="w-4 h-4 text-white" />
+      <div className="h-14 flex items-center px-4 border-b border-border">
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-md bg-primary-500 flex items-center justify-center">
+            <Sparkles className="w-4 h-4 text-white" />
           </div>
-          <span className="font-semibold text-lg">EmailParser</span>
+          <span className="font-semibold text-text-primary">EmailParser</span>
         </div>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-3 py-4 space-y-1">
+      <nav className="flex-1 px-2 py-3 space-y-0.5">
         {navigation.map((item) => {
           const isActive = pathname === item.href
           return (
@@ -46,13 +47,13 @@ export function Sidebar() {
               key={item.name}
               href={item.href}
               className={cn(
-                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200',
+                'flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors',
                 isActive
-                  ? 'bg-primary-500/10 text-primary-400 border border-primary-500/20'
+                  ? 'bg-surface-light text-text-primary'
                   : 'text-text-secondary hover:text-text-primary hover:bg-surface-light'
               )}
             >
-              <item.icon className="w-5 h-5" />
+              <item.icon className="w-4 h-4" />
               {item.name}
             </Link>
           )
@@ -60,11 +61,11 @@ export function Sidebar() {
       </nav>
 
       {/* Status indicators */}
-      <div className="p-4 border-t border-border space-y-3">
-        <div className="text-xs font-medium text-text-muted uppercase tracking-wider">
-          Pipeline Status
+      <div className="p-3 border-t border-border">
+        <div className="text-xs font-medium text-text-muted uppercase tracking-wider mb-2 px-1">
+          Pipeline
         </div>
-        <div className="space-y-2">
+        <div className="space-y-1">
           <StatusItem icon={Inbox} label="Pending" count={12} color="warning" />
           <StatusItem icon={CheckCircle} label="Reviewed" count={156} color="success" />
           <StatusItem icon={AlertCircle} label="Failed" count={3} color="error" />
@@ -92,16 +93,14 @@ function StatusItem({
   }
 
   return (
-    <div className="flex items-center justify-between text-sm">
+    <div className="flex items-center justify-between text-xs px-1 py-1">
       <div className="flex items-center gap-2 text-text-secondary">
-        <Icon className={cn('w-4 h-4', colorClasses[color])} />
+        <Icon className={cn('w-3.5 h-3.5', colorClasses[color])} />
         <span>{label}</span>
       </div>
-      <span className={cn('font-mono font-medium', colorClasses[color])}>
+      <span className={cn('font-mono', colorClasses[color])}>
         {count}
       </span>
     </div>
   )
 }
-
-
