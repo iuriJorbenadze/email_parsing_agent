@@ -143,12 +143,15 @@ async def parse_email(email_id: int, db: Session = Depends(get_db)):
         # Load current schema
         schema = load_schema()
         
-        # Call OpenAI parser
+        # Call OpenAI parser with full metadata
         result = openai_parse_email(
             email_body=email.body_text,
             schema=schema,
             subject=email.subject or "",
-            sender=f"{email.sender_name or ''} <{email.sender}>".strip(),
+            sender_email=email.sender or "",
+            sender_name=email.sender_name or "",
+            received_at=email.received_at,
+            headers=email.headers,  # Additional headers like Reply-To, CC
         )
         
         if result["success"]:
