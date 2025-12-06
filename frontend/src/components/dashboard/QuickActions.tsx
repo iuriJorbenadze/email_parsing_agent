@@ -1,15 +1,18 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import { 
   RefreshCw, 
   Plus, 
   FileJson, 
-  Download,
   Zap,
-  Database
+  Database,
+  Sparkles,
+  CheckCircle,
+  AlertCircle
 } from 'lucide-react'
-import { useSeedData } from '@/lib/hooks'
+import { useSeedData, useParseBatch } from '@/lib/hooks'
 
 const colorClasses = {
   primary: 'bg-primary-500/10 text-primary-400 group-hover:bg-primary-500/20',
@@ -21,35 +24,16 @@ const colorClasses = {
 
 export function QuickActions() {
   const seedData = useSeedData()
+  const parseBatch = useParseBatch()
+  const [batchSize, setBatchSize] = useState(5)
 
   const handleSeedData = () => {
     seedData.mutate()
   }
 
-  const actions = [
-    {
-      name: 'Seed Sample Data',
-      description: 'Add test emails to database',
-      icon: Database,
-      color: 'warning',
-      onClick: handleSeedData,
-      loading: seedData.isPending,
-    },
-    {
-      name: 'Connect Gmail',
-      description: 'Add a new Gmail inbox',
-      href: '/accounts',
-      icon: Plus,
-      color: 'primary',
-    },
-    {
-      name: 'Edit Schema',
-      description: 'Customize parsing fields',
-      href: '/schema',
-      icon: FileJson,
-      color: 'accent',
-    },
-  ]
+  const handleParseBatch = () => {
+    parseBatch.mutate(batchSize)
+  }
 
   return (
     <div className="card">
@@ -58,63 +42,129 @@ export function QuickActions() {
         <h2 className="text-lg font-semibold">Quick Actions</h2>
       </div>
 
+      {/* Status messages */}
       {seedData.isSuccess && (
-        <div className="mb-4 p-3 bg-success/10 border border-success/20 rounded-lg text-sm text-success">
-          ✓ Sample data added! Refresh to see emails.
+        <div className="mb-4 p-3 bg-success/10 border border-success/20 rounded-lg text-sm text-success flex items-center gap-2">
+          <CheckCircle className="w-4 h-4" />
+          Sample data added!
+        </div>
+      )}
+      
+      {parseBatch.isSuccess && (
+        <div className="mb-4 p-3 bg-success/10 border border-success/20 rounded-lg text-sm text-success flex items-center gap-2">
+          <CheckCircle className="w-4 h-4" />
+          Processed {parseBatch.data?.successful || 0} of {parseBatch.data?.processed || 0} emails
+        </div>
+      )}
+      
+      {parseBatch.isError && (
+        <div className="mb-4 p-3 bg-error/10 border border-error/20 rounded-lg text-sm text-error flex items-center gap-2">
+          <AlertCircle className="w-4 h-4" />
+          Batch processing failed
         </div>
       )}
 
-      <div className="space-y-2">
-        {actions.map((action, index) => {
-          if (action.onClick) {
-            return (
-              <button
-                key={action.name}
-                onClick={action.onClick}
-                disabled={action.loading}
-                className="flex items-center gap-3 p-3 w-full rounded-lg hover:bg-surface-light transition-all group animate-fade-in text-left disabled:opacity-50"
-                style={{ animationDelay: `${index * 50}ms` }}
-              >
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${colorClasses[action.color as keyof typeof colorClasses]}`}>
-                  {action.loading ? (
-                    <RefreshCw className="w-5 h-5 animate-spin" />
-                  ) : (
-                    <action.icon className="w-5 h-5" />
-                  )}
-                </div>
-                <div>
-                  <p className="font-medium text-text-primary group-hover:text-primary-400 transition-colors">
-                    {action.name}
-                  </p>
-                  <p className="text-sm text-text-muted">
-                    {action.description}
-                  </p>
-                </div>
-              </button>
-            )
-          }
-
-          return (
-            <Link
-              key={action.name}
-              href={action.href!}
-              className="flex items-center gap-3 p-3 w-full rounded-lg hover:bg-surface-light transition-all group animate-fade-in text-left"
-              style={{ animationDelay: `${index * 50}ms` }}
+      <div className="space-y-3">
+        {/* Parse Batch - Special UI */}
+        <div className="p-3 rounded-lg bg-surface-light border border-border">
+          <div className="flex items-center gap-3 mb-3">
+            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${colorClasses.accent}`}>
+              <Sparkles className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="font-medium text-text-primary">Process Pending Emails</p>
+              <p className="text-sm text-text-muted">Parse with AI</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <select 
+              value={batchSize}
+              onChange={(e) => setBatchSize(Number(e.target.value))}
+              className="input py-1.5 text-sm flex-shrink-0 w-24"
+              disabled={parseBatch.isPending}
             >
-              <div className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${colorClasses[action.color as keyof typeof colorClasses]}`}>
-                <action.icon className="w-5 h-5" />
-              </div>
-              <div>
-                <p className="font-medium text-text-primary group-hover:text-primary-400 transition-colors">
-                  {action.name}
-                </p>
-                <p className="text-sm text-text-muted">
-                  {action.description}
-                </p>
-              </div>
-            </Link>
-          )
-        })}
+              <option value={1}>1 email</option>
+              <option value={5}>5 emails</option>
+              <option value={10}>10 emails</option>
+              <option value={25}>25 emails</option>
+              <option value={50}>50 emails</option>
+            </select>
+            <button
+              onClick={handleParseBatch}
+              disabled={parseBatch.isPending}
+              className="btn btn-primary flex-1 py-1.5 text-sm"
+            >
+              {parseBatch.isPending ? (
+                <>
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4" />
+                  Parse Now
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Other actions */}
+        <button
+          onClick={handleSeedData}
+          disabled={seedData.isPending}
+          className="flex items-center gap-3 p-3 w-full rounded-lg hover:bg-surface-light transition-all group text-left disabled:opacity-50"
+        >
+          <div className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${colorClasses.warning}`}>
+            {seedData.isPending ? (
+              <RefreshCw className="w-5 h-5 animate-spin" />
+            ) : (
+              <Database className="w-5 h-5" />
+            )}
+          </div>
+          <div>
+            <p className="font-medium text-text-primary group-hover:text-primary-400 transition-colors">
+              Seed Sample Data
+            </p>
+            <p className="text-sm text-text-muted">
+              Add test emails
+            </p>
+          </div>
+        </button>
+
+        <Link
+          href="/accounts"
+          className="flex items-center gap-3 p-3 w-full rounded-lg hover:bg-surface-light transition-all group text-left"
+        >
+          <div className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${colorClasses.primary}`}>
+            <Plus className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="font-medium text-text-primary group-hover:text-primary-400 transition-colors">
+              Connect Gmail
+            </p>
+            <p className="text-sm text-text-muted">
+              Add a new inbox
+            </p>
+          </div>
+        </Link>
+
+        <Link
+          href="/schema"
+          className="flex items-center gap-3 p-3 w-full rounded-lg hover:bg-surface-light transition-all group text-left"
+        >
+          <div className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${colorClasses.info}`}>
+            <FileJson className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="font-medium text-text-primary group-hover:text-primary-400 transition-colors">
+              Edit Schema
+            </p>
+            <p className="text-sm text-text-muted">
+              Customize parsing fields
+            </p>
+          </div>
+        </Link>
       </div>
     </div>
   )

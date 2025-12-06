@@ -1,13 +1,17 @@
+"""Parsing endpoints for email processing."""
 from fastapi import APIRouter, Depends, HTTPException, Body
 from sqlalchemy.orm import Session
 from typing import Dict, Any
-from pydantic import BaseModel
+from datetime import datetime
 import json
 import os
+import logging
 
 from app.core.database import get_db
+from app.services.openai_parser import parse_email as openai_parse_email
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 # File-based schema storage (simple approach for MVP)
 SCHEMA_FILE = "/app/data/parsing_schema.json"
@@ -34,27 +38,27 @@ DEFAULT_PARSING_SCHEMA = {
         },
         "offer_type": {
             "type": "string",
-            "description": "Type of offer (e.g., partnership, advertising, sale)"
+            "description": "Type of offer (e.g., partnership, advertising, guest_post, link_exchange, acquisition, sponsored)"
         },
         "price": {
             "type": "object",
             "properties": {
-                "amount": {"type": "number"},
-                "currency": {"type": "string"}
+                "amount": {"type": "number", "description": "Price amount if mentioned"},
+                "currency": {"type": "string", "description": "Currency code (USD, EUR, etc.)"}
             }
         },
         "description": {
             "type": "string",
-            "description": "Brief description of the offer"
+            "description": "Brief summary of what is being offered"
         },
         "metrics": {
             "type": "object",
             "properties": {
-                "monthly_traffic": {"type": "string"},
-                "domain_authority": {"type": "number"},
-                "page_authority": {"type": "number"}
+                "monthly_traffic": {"type": "string", "description": "Monthly visitors/traffic if mentioned"},
+                "domain_authority": {"type": "number", "description": "DA score if mentioned"},
+                "page_authority": {"type": "number", "description": "PA score if mentioned"}
             },
-            "description": "Website metrics if mentioned"
+            "description": "Website metrics if mentioned in the email"
         }
     },
     "required": ["company_name", "offer_type"]
@@ -68,7 +72,7 @@ def load_schema() -> Dict[str, Any]:
             with open(SCHEMA_FILE, 'r') as f:
                 return json.load(f)
     except Exception as e:
-        print(f"Error loading schema: {e}")
+        logger.error(f"Error loading schema: {e}")
     return DEFAULT_PARSING_SCHEMA
 
 
@@ -78,18 +82,10 @@ def save_schema(schema: Dict[str, Any]) -> None:
         os.makedirs(os.path.dirname(SCHEMA_FILE), exist_ok=True)
         with open(SCHEMA_FILE, 'w') as f:
             json.dump(schema, f, indent=2)
-        print(f"Schema saved to {SCHEMA_FILE}")
+        logger.info(f"Schema saved to {SCHEMA_FILE}")
     except Exception as e:
-        print(f"Error saving schema: {e}")
+        logger.error(f"Error saving schema: {e}")
         raise
-
-
-class SchemaUpdateRequest(BaseModel):
-    schema_data: Dict[str, Any]
-
-    class Config:
-        # Allow 'schema' as field name despite Pydantic warning
-        protected_namespaces = ()
 
 
 @router.get("/schema")
@@ -106,7 +102,6 @@ async def update_parsing_schema(body: Dict[str, Any] = Body(...)):
     if not schema:
         raise HTTPException(status_code=400, detail="Schema is required in request body")
     
-    # Basic validation - check it's a valid JSON schema structure
     if not isinstance(schema, dict):
         raise HTTPException(status_code=400, detail="Schema must be an object")
     
@@ -120,17 +115,131 @@ async def update_parsing_schema(body: Dict[str, Any] = Body(...)):
 
 @router.post("/parse/{email_id}")
 async def parse_email(email_id: int, db: Session = Depends(get_db)):
-    """Parse a specific email using the current schema."""
-    from app.models.email import Email
+    """
+    Parse a specific email using OpenAI and the current schema.
     
+    This will:
+    1. Load the email from database
+    2. Load the current parsing schema
+    3. Send to OpenAI for parsing
+    4. Save the parsed data back to the email record
+    """
+    from app.models.email import Email, EmailStatus
+    
+    # Get the email
     email = db.query(Email).filter(Email.id == email_id).first()
     if not email:
         raise HTTPException(status_code=404, detail="Email not found")
     
-    # TODO: Implement OpenAI parsing
+    # Check if email has content
+    if not email.body_text:
+        raise HTTPException(status_code=400, detail="Email has no content to parse")
+    
+    # Update status to parsing
+    email.status = EmailStatus.PARSING
+    db.commit()
+    
+    try:
+        # Load current schema
+        schema = load_schema()
+        
+        # Call OpenAI parser
+        result = openai_parse_email(
+            email_body=email.body_text,
+            schema=schema,
+            subject=email.subject or "",
+            sender=f"{email.sender_name or ''} <{email.sender}>".strip(),
+        )
+        
+        if result["success"]:
+            # Save parsed data
+            email.parsed_data = result["data"]
+            email.parsing_model = result.get("model", "gpt-4-turbo-preview")
+            email.parsed_at = datetime.utcnow()
+            email.status = EmailStatus.PARSED
+            email.error_message = None
+            
+            db.commit()
+            
+            return {
+                "success": True,
+                "email_id": email_id,
+                "parsed_data": result["data"],
+                "model": result.get("model"),
+                "usage": result.get("usage"),
+            }
+        else:
+            # Parsing failed
+            email.status = EmailStatus.FAILED
+            email.error_message = result.get("error", "Unknown parsing error")
+            db.commit()
+            
+            raise HTTPException(
+                status_code=500,
+                detail=f"Parsing failed: {result.get('error', 'Unknown error')}"
+            )
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        # Unexpected error
+        email.status = EmailStatus.FAILED
+        email.error_message = str(e)
+        db.commit()
+        
+        logger.error(f"Unexpected error parsing email {email_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Parsing error: {str(e)}")
+
+
+@router.post("/parse-batch")
+async def parse_batch(
+    body: Dict[str, Any] = Body(...),
+    db: Session = Depends(get_db),
+):
+    """
+    Queue a batch of pending emails for parsing.
+    
+    Body:
+        - count: Number of emails to process (default 10, max 100)
+    
+    Returns:
+        - queued: Number of emails queued
+        - email_ids: List of email IDs that will be processed
+    """
+    from app.models.email import Email, EmailStatus
+    
+    count = min(body.get("count", 10), 100)  # Cap at 100
+    
+    # Get pending emails
+    pending_emails = db.query(Email).filter(
+        Email.status == EmailStatus.PENDING
+    ).limit(count).all()
+    
+    if not pending_emails:
+        return {
+            "queued": 0,
+            "email_ids": [],
+            "message": "No pending emails to process"
+        }
+    
+    email_ids = [e.id for e in pending_emails]
+    
+    # Process each email (sequential for now, will be async later)
+    results = []
+    for email_id in email_ids:
+        try:
+            result = await parse_email(email_id, db)
+            results.append({"email_id": email_id, "success": True})
+        except Exception as e:
+            results.append({"email_id": email_id, "success": False, "error": str(e)})
+    
+    successful = sum(1 for r in results if r["success"])
+    
     return {
-        "message": "OpenAI parsing not yet implemented",
-        "email_id": email_id,
+        "processed": len(results),
+        "successful": successful,
+        "failed": len(results) - successful,
+        "results": results,
     }
 
 
@@ -142,7 +251,6 @@ async def save_correction(
 ):
     """Save human correction for a parsed email."""
     from app.models.email import Email, EmailStatus
-    from datetime import datetime
     
     email = db.query(Email).filter(Email.id == email_id).first()
     if not email:

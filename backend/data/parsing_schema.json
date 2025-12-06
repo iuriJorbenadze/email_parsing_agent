@@ -1,4 +1,59 @@
 {
   "type": "object",
-  "test_field": "ad        de d"
+  "properties": {
+    "company_name": {
+      "type": "string",
+      "description": "Name of the company making the offer"
+    },
+    "contact_email": {
+      "type": "string",
+      "description": "Contact email address"
+    },
+    "contact_name": {
+      "type": "string",
+      "description": "Name of the contact person"
+    },
+    "website_url": {
+      "type": "string",
+      "description": "Website URL being offered"
+    },
+    "offer_type": {
+      "type": "string",
+      "description": "Type of offer (e.g., partnership, advertising, sale)"
+    },
+    "price": {
+      "type": "object",
+      "properties": {
+        "amount": {
+          "type": "number"
+        },
+        "currency": {
+          "type": "string"
+        }
+      }
+    },
+    "description": {
+      "type": "string",
+      "description": "Brief description of the offer"
+    },
+    "metrics": {
+      "type": "object",
+      "properties": {
+        "monthly_traffic": {
+          "type": "string"
+        },
+        "domain_authority": {
+          "type": "number"
+        },
+        "page_authority": {
+          "type": "number"
+        }
+      },
+      "description": "Website metrics if mentioned"
+    }
+  },
+  "required": [
+    "company_name",
+    "offer_type"
+  ]
 }

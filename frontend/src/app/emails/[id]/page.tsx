@@ -8,10 +8,12 @@ import {
   RefreshCw, 
   AlertTriangle,
   Loader2,
-  CheckCircle
+  CheckCircle,
+  Sparkles,
+  AlertCircle
 } from 'lucide-react'
 import { JsonEditor } from '@/components/email/JsonEditor'
-import { useEmail, useUpdateEmail } from '@/lib/hooks'
+import { useEmail, useUpdateEmail, useParseEmail } from '@/lib/hooks'
 
 export default function EmailDetailPage() {
   const params = useParams()
@@ -20,6 +22,7 @@ export default function EmailDetailPage() {
   
   const { data: email, isLoading, error, refetch } = useEmail(emailId)
   const updateEmail = useUpdateEmail()
+  const parseEmail = useParseEmail()
   
   const [editedData, setEditedData] = useState<any>(null)
   const [hasChanges, setHasChanges] = useState(false)
@@ -29,7 +32,7 @@ export default function EmailDetailPage() {
   useEffect(() => {
     if (email) {
       // Use corrected_data if exists, otherwise parsed_data
-      setEditedData(email.corrected_data || email.parsed_data || {})
+      setEditedData(email.corrected_data || email.parsed_data || null)
       setHasChanges(false)
       setSaveSuccess(false)
     }
@@ -53,7 +56,6 @@ export default function EmailDetailPage() {
       setHasChanges(false)
       setSaveSuccess(true)
       setTimeout(() => setSaveSuccess(false), 3000)
-      // Refetch to get updated data
       refetch()
     } catch (error) {
       console.error('Failed to save:', error)
@@ -72,6 +74,18 @@ export default function EmailDetailPage() {
       refetch()
     } catch (error) {
       console.error('Failed to mark reviewed:', error)
+    }
+  }
+
+  const handleParse = async () => {
+    if (!email) return
+    
+    try {
+      await parseEmail.mutateAsync(email.id)
+      refetch()
+    } catch (error: any) {
+      console.error('Failed to parse:', error)
+      alert(`Parsing failed: ${error.response?.data?.detail || error.message}`)
     }
   }
 
@@ -95,6 +109,9 @@ export default function EmailDetailPage() {
     )
   }
 
+  const needsParsing = !email.parsed_data && email.status === 'pending'
+  const canReparse = email.status !== 'parsing'
+
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
@@ -117,6 +134,8 @@ export default function EmailDetailPage() {
                   <span className={`ml-2 px-2 py-0.5 rounded text-xs ${
                     email.status === 'reviewed' ? 'bg-success/20 text-success' :
                     email.status === 'parsed' ? 'bg-info/20 text-info' :
+                    email.status === 'parsing' ? 'bg-warning/20 text-warning' :
+                    email.status === 'failed' ? 'bg-error/20 text-error' :
                     'bg-warning/20 text-warning'
                   }`}>
                     {email.status}
@@ -132,7 +151,25 @@ export default function EmailDetailPage() {
                 Saved!
               </span>
             )}
-            {email.status !== 'reviewed' && !hasChanges && (
+            
+            {/* Parse / Re-parse button */}
+            {canReparse && (
+              <button 
+                onClick={handleParse}
+                disabled={parseEmail.isPending}
+                className={`btn ${needsParsing ? 'btn-primary' : 'btn-secondary'}`}
+              >
+                {parseEmail.isPending ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Sparkles className="w-4 h-4" />
+                )}
+                {parseEmail.isPending ? 'Parsing...' : needsParsing ? 'Parse with AI' : 'Re-parse'}
+              </button>
+            )}
+            
+            {/* Mark Reviewed button */}
+            {email.status === 'parsed' && !hasChanges && (
               <button 
                 onClick={handleMarkReviewed}
                 disabled={updateEmail.isPending}
@@ -142,9 +179,11 @@ export default function EmailDetailPage() {
                 Mark Reviewed
               </button>
             )}
+            
+            {/* Save Changes button */}
             <button 
               onClick={handleSave}
-              disabled={!hasChanges || updateEmail.isPending}
+              disabled={!hasChanges || updateEmail.isPending || !editedData}
               className="btn btn-primary"
             >
               {updateEmail.isPending ? (
@@ -157,6 +196,21 @@ export default function EmailDetailPage() {
           </div>
         </div>
       </header>
+
+      {/* Parsing status banner */}
+      {parseEmail.isPending && (
+        <div className="px-6 py-3 bg-primary-500/10 border-b border-primary-500/20 flex items-center gap-3">
+          <Loader2 className="w-5 h-5 animate-spin text-primary-400" />
+          <span className="text-primary-300">Parsing email with AI... This may take a few seconds.</span>
+        </div>
+      )}
+      
+      {email.status === 'failed' && email.error_message && (
+        <div className="px-6 py-3 bg-error/10 border-b border-error/20 flex items-center gap-3">
+          <AlertCircle className="w-5 h-5 text-error" />
+          <span className="text-error">Parsing failed: {email.error_message}</span>
+        </div>
+      )}
 
       {/* Side by side view */}
       <div className="flex-1 flex overflow-hidden">
@@ -180,7 +234,7 @@ export default function EmailDetailPage() {
         <div className="w-1/2 flex flex-col">
           <div className="flex-shrink-0 px-4 py-3 border-b border-border bg-surface-light flex items-center justify-between">
             <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider">
-              Parsed Data (Editable)
+              {editedData ? 'Parsed Data (Editable)' : 'No Parsed Data'}
             </h2>
             {hasChanges && (
               <span className="text-xs text-warning flex items-center gap-1">
@@ -190,14 +244,27 @@ export default function EmailDetailPage() {
             )}
           </div>
           <div className="flex-1 overflow-auto">
-            {editedData !== null ? (
+            {editedData ? (
               <JsonEditor 
                 value={editedData} 
                 onChange={handleJsonChange}
               />
             ) : (
-              <div className="flex items-center justify-center h-full text-text-muted">
-                <p>No parsed data available. Parse this email first.</p>
+              <div className="flex flex-col items-center justify-center h-full text-text-muted gap-4">
+                <Sparkles className="w-12 h-12 text-text-muted/50" />
+                <p>No parsed data yet</p>
+                <button 
+                  onClick={handleParse}
+                  disabled={parseEmail.isPending}
+                  className="btn btn-primary"
+                >
+                  {parseEmail.isPending ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Sparkles className="w-4 h-4" />
+                  )}
+                  Parse with AI
+                </button>
               </div>
             )}
           </div>
